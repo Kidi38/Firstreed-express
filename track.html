@@ -336,6 +336,148 @@
                                             border-bottom: 1px solid #EBEBEB;
                                         }
                                     </style>
+
+<style>
+.tracking-timeline {
+    position: relative;
+    padding-left: 50px;
+    margin-top: 30px;
+}
+.timeline-item {
+    position: relative;
+    padding-bottom: 30px;
+}
+.timeline-item:before {
+    content: '';
+    position: absolute;
+    left: -39px;
+    top: 0;
+    bottom: -30px;
+    width: 2px;
+    background: #ddd;
+}
+.timeline-item:last-child:before {
+    display: none;
+}
+.timeline-dot {
+    position: absolute;
+    left: -50px;
+    top: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #28a745;
+    border: 3px solid white;
+    box-shadow: 0 0 0 2px #28a745;
+}
+.timeline-item.pending .timeline-dot {
+    background: #ffc107;
+    box-shadow: 0 0 0 2px #ffc107;
+}
+.timeline-location {
+    font-weight: bold;
+    font-size: 16px;
+    color: #333;
+}
+.timeline-date {
+    color: #666;
+    font-size: 13px;
+}
+.timeline-status {
+    color: #28a745;
+    margin-top: 5px;
+}
+.download-label-btn {
+    background: #007bff;
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    margin: 20px 0;
+}
+.download-label-btn:hover {
+    background: #0056b3;
+}
+</style>
+
+<script>
+// Update the tracking display JavaScript
+async function displayTrackingResults(tcode) {
+    try {
+        const res = await fetch('/api/track?tcode=' + encodeURIComponent(tcode));
+        if (!res.ok) {
+            document.getElementById('result').innerHTML = '<p style="color:red;">Tracking code not found</p>';
+            return;
+        }
+        
+        const data = await res.json();
+        
+        // Build timeline HTML
+        let timelineHTML = '<div class="tracking-timeline">';
+        
+        if (data.history && data.history.length > 0) {
+            data.history.reverse().forEach((item, index) => {
+                const isPending = item.status.toLowerCase() === 'pending';
+                timelineHTML += `
+                    <div class="timeline-item ${isPending ? 'pending' : ''}">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-location">${item.note || item.status}</div>
+                        <div class="timeline-date">${item.when}</div>
+                        <div class="timeline-status">${item.status.toUpperCase()}</div>
+                    </div>
+                `;
+            });
+        }
+        
+        timelineHTML += '</div>';
+        
+        // Complete HTML with download button
+        const html = `
+            <h3>Tracking: <span style="color: #cc0000;">${data.tcode}</span></h3>
+            <p><strong>Status:</strong> <span style="color: #28a745; font-weight: bold;">${(data.status || '').toUpperCase()}</span></p>
+            <p><strong>Origin:</strong> ${data.origin || 'N/A'} → <strong>Destination:</strong> ${data.destination || 'N/A'}</p>
+            
+            <button class="download-label-btn" onclick="downloadLabel('${data.tcode}')">
+                📄 Download Shipping Label (PDF)
+            </button>
+            
+            <h4>Shipment Progress</h4>
+            ${timelineHTML}
+            
+            <h4>Package Details</h4>
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 5px;">
+                ${(data.products || []).map(p => `
+                    <div style="margin-bottom: 10px;">
+                        ${p.image ? `<img src="${p.image}" style="max-width: 100px; height: auto; margin-right: 10px;">` : ''}
+                        <strong>${p.name || 'Item'}</strong> - Qty: ${p.qty || 'N/A'} - Weight: ${p.weight || 'N/A'}
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        
+        document.getElementById('result').innerHTML = html;
+        document.getElementById('result').classList.remove('hidden');
+        
+    } catch (err) {
+        document.getElementById('result').innerHTML = '<p style="color:red;">Error loading tracking data</p>';
+    }
+}
+
+function downloadLabel(tcode) {
+    window.open('/api/generate-label/' + tcode, '_blank');
+}
+
+// Auto-load if tcode in URL
+const urlParams = new URLSearchParams(window.location.search);
+const tcode = urlParams.get('tcode') || urlParams.get('track');
+if (tcode) {
+    displayTrackingResults(tcode);
+}
+</script>
+
+
                                     <ul class="history">
                                         <li>
                                             <h4 class="title">Jamaica</h4>
