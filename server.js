@@ -259,6 +259,116 @@ app.post("/api/change_credentials", requireAdmin, async (req, res) => {
   res.json({ ok: true });
 });
 
+// PDF Label Generation
+const PDFDocument = require('pdfkit');
+const QRCode = require('qrcode');
+const bwipjs = require('bwip-js');
+
+app.get("/api/generate-label/:tcode", async (req, res) => {
+  try {
+    const tcode = req.params.tcode;
+    const all = await readAll();
+    const record = all[tcode];
+    
+    if (!record) {
+      return res.status(404).json({ error: "Tracking not found" });
+    }
+
+    // Create PDF
+    const doc = new PDFDocument({ size: 'A4', margin: 30 });
+    
+    // Set response headers
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=Label-${tcode}.pdf`);
+    
+    // Pipe PDF to response
+    doc.pipe(res);
+
+    // Logo area
+    doc.fontSize(20).fillColor('#0066cc').text('FASTREED', 50, 50);
+    doc.fontSize(10).fillColor('#000').text('Express Delivery Services', 50, 75);
+
+    // Origin and Destination boxes
+    doc.rect(350, 40, 200, 80).stroke();
+    doc.fontSize(9).text('ORIGIN', 360, 45);
+    doc.fontSize(12).font('Helvetica-Bold').text(record.origin || '', 360, 60);
+    
+    doc.rect(350, 130, 200, 80).stroke();
+    doc.fontSize(9).text('DESTINATION', 360, 135);
+    doc.fontSize(12).font('Helvetica-Bold').text(record.destination || '', 360, 150);
+
+    // Generate barcode
+    try {
+      const barcodeBuffer = await bwipjs.toBuffer({
+        bcid: 'code128',
+        text: tcode,
+        scale: 3,
+        height: 10,
+        includetext: true,
+        textxalign: 'center'
+      });
+      doc.image(barcodeBuffer, 200, 120, { width: 200 });
+    } catch (err) {
+      console.error('Barcode error:', err);
+    }
+
+    // Tracking code prominent display
+    doc.fontSize(16).font('Helvetica-Bold').text('TRACKING CODE', 50, 250);
+    doc.fontSize(22).fillColor('#cc0000').text(tcode, 50, 275);
+
+    // Sender info
+    doc.fontSize(10).fillColor('#000').font('Helvetica').text('Sender Name:', 50, 330);
+    doc.font('Helvetica-Bold').text(record.sender?.name || '', 150, 330);
+    doc.font('Helvetica').text('Phone:', 50, 350);
+    doc.text(record.sender?.phone || '', 150, 350);
+    doc.text('Email:', 50, 370);
+    doc.text(record.sender?.email || '', 150, 370);
+
+    // Receiver info
+    doc.fontSize(12).font('Helvetica-Bold').text('RECEIVER', 350, 330);
+    doc.fontSize(10).font('Helvetica').text('Name:', 350, 350);
+    doc.text(record.receiver?.name || '', 400, 350);
+    doc.text('Phone:', 350, 370);
+    doc.text(record.receiver?.phone || '', 400, 370);
+    doc.text('Email:', 350, 390);
+    doc.text(record.receiver?.email || '', 400, 390);
+
+    // Shipment details box
+    doc.rect(50, 430, 500, 100).stroke();
+    doc.fontSize(10).text('Registered Date:', 60, 440);
+    doc.text(record.created_at || '', 180, 440);
+    doc.text('Expected Delivery:', 60, 460);
+    doc.text(record.expectedDelivery || '', 180, 460);
+    doc.text('Shipment Status:', 60, 480);
+    doc.font('Helvetica-Bold').fillColor('#009900').text((record.status || '').toUpperCase(), 180, 480);
+
+    // Products
+    doc.fillColor('#000').font('Helvetica-Bold').text('ITEMS:', 60, 510);
+    let yPos = 525;
+    (record.products || []).forEach((prod, i) => {
+      doc.font('Helvetica').fontSize(9).text(`${i + 1}. ${prod.name || 'Item'} - Qty: ${prod.qty || 'N/A'} - Weight: ${prod.weight || 'N/A'}`, 60, yPos);
+      yPos += 15;
+    });
+
+    // Stamp area (placeholder)
+    doc.rect(450, 580, 100, 100).stroke();
+    doc.fontSize(8).text('OFFICE STAMP', 465, 620);
+    doc.circle(500, 650, 30).stroke();
+    doc.fontSize(16).text('✓', 492, 638);
+
+    // Footer
+    doc.fontSize(8).fillColor('#666').text('Firstreedexpress Express Delivery Services - Secure & Reliable', 50, 750);
+    doc.text('For inquiries: support@firstreedexpress.com | +447832398350', 50, 765);
+
+    // Finalize PDF
+    doc.end();
+
+  } catch (err) {
+    console.error('PDF generation error:', err);
+    res.status(500).json({ error: 'Failed to generate label' });
+  }
+});
+
 // Start server
 app.listen(PORT, "0.0.0.0", () => console.log(`Server listening on http://localhost:${PORT}`));
 
