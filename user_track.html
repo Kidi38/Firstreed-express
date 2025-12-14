@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Track Shipment - FastReed</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f7f9fc;
+            margin: 0;
+            padding: 20px
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto
+        }
+
+        .card {
+            background: #fff;
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .06)
+        }
+
+        input[type=text] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px
+        }
+
+        button {
+            background: #007bff;
+            color: #fff;
+            padding: 10px 14px;
+            border: none;
+            border-radius: 6px
+        }
+
+        .status {
+            font-size: 18px;
+            font-weight: 600
+        }
+
+        .small {
+            color: #666
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse
+        }
+
+        th,
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #eee
+        }
+
+        .product-image {
+            max-width: 150px;
+            height: auto;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>Track Your Shipment</h1>
+            <p class="small">Enter your tracking ID (format: TRK-######)</p>
+            <input id="tcode" placeholder="TRK-000001">
+            <div style="margin-top:10px"><button id="btnTrack">Track</button></div>
+            <hr>
+            <div id="result"></div>
+        </div>
+    </div>
+    <script>
+        (async function () {
+            const $ = id => document.getElementById(id);
+            $('btnTrack').addEventListener('click', async () => {
+                const t = $('tcode').value.trim(); if (!t) { alert('Enter tracking id'); return; }
+                $('result').innerHTML = 'Loading...';
+                try {
+                    const res = await fetch('/api/track?tcode=' + encodeURIComponent(t), { headers: { 'Accept': 'application/json' } });
+                    if (!res.ok) { $('result').innerHTML = '<div style="color:red">Tracking ID not found</div>'; return; }
+                    const r = await res.json();
+                    render(r);
+                } catch (e) { $('result').innerHTML = '<div style="color:red">Error fetching tracking</div>'; }
+            });
+
+            function render(r) {
+                const html = [];
+                html.push('<h2>' + escapeHtml(r.tcode) + '</h2>');
+                html.push('<div class="status">Status: ' + escapeHtml(r.status) + '</div>');
+                html.push('<div class="small">Created: ' + escapeHtml(r.created_at || r.date || '') + '</div>');
+                html.push('<h3>Products</h3>');
+                if (Array.isArray(r.products) && r.products.length) {
+                    html.push('<table><thead><tr><th>Image</th><th>Product</th><th>Qty</th><th>Weight</th></tr></thead><tbody>');
+                    r.products.forEach(p => {
+                        let imgHtml = p.image ? '<img src="' + p.image + '" class="product-image" />' : '<span class="small">No image</span>';
+                        html.push('<tr><td>' + imgHtml + '</td><td>' + escapeHtml(p.name || '') + '</td><td>' + escapeHtml(p.qty || '') + '</td><td>' + escapeHtml(p.weight || '') + '</td></tr>');
+                    });
+                    html.push('</tbody></table>');
+                } else html.push('<div class="small">No products listed</div>');
+                html.push('<h3>History</h3>');
+                if (Array.isArray(r.history) && r.history.length) {
+                    html.push('<ul>'); r.history.forEach(h => html.push('<li>' + escapeHtml(h.when || '') + ' — ' + escapeHtml(h.status || '') + (h.note ? (' — ' + escapeHtml(h.note)) : '') + '</li>')); html.push('</ul>');
+                } else html.push('<div class="small">No history</div>');
+                $('result').innerHTML = html.join('\n');
+            }
+            function escapeHtml(s) { if (!s && s !== 0) return ''; return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); }
+        })();
+    </script>
+</body>
+
+</html>

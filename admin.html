@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firstreedexpress Admin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 90%;
+            max-width: 1200px;
+            padding: 40px;
+        }
+        .login-box {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: bold;
+        }
+        input[type="text"],
+        input[type="password"],
+        input[type="email"],
+        input[type="number"],
+        input[type="date"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        .error {
+            color: #e74c3c;
+            margin-top: 10px;
+            text-align: center;
+        }
+        .success {
+            color: #27ae60;
+            margin-top: 10px;
+            text-align: center;
+        }
+        .dashboard {
+            display: none;
+        }
+        .dashboard.active {
+            display: block;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+        .logout-btn {
+            width: auto;
+            padding: 10px 20px;
+            background: #e74c3c;
+        }
+        .logout-btn:hover {
+            background: #c0392b;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            color: #666;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+        }
+        tr:hover {
+            background: #f8f9fa;
+        }
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-pending { background: #ffeaa7; color: #d63031; }
+        .status-in-transit { background: #74b9ff; color: #0984e3; }
+        .status-delivered { background: #55efc4; color: #00b894; }
+        .product-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .product-row input {
+            flex: 1;
+        }
+        .add-product-btn {
+            margin-top: 10px;
+            background: #27ae60;
+        }
+        .remove-product-btn {
+            width: auto;
+            padding: 8px 15px;
+            background: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Login Section -->
+        <div id="loginSection" class="login-box">
+            <h1>🚚 Firstreedexpress Admin</h1>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="username" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit">Login</button>
+                <div id="loginError" class="error"></div>
+            </form>
+        </div>
+
+        <!-- Dashboard Section -->
+        <div id="dashboardSection" class="dashboard">
+            <div class="header">
+                <h1>Admin Dashboard</h1>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('list')">All Shipments</button>
+                <button class="tab" onclick="switchTab('create')">Create New</button>
+                <button class="tab" onclick="switchTab('update')">Update Status</button>
+            </div>
+
+            <!-- List Tab -->
+            <div id="listTab" class="tab-content active">
+                <button onclick="loadShipments()" style="margin-bottom: 20px;">Refresh List</button>
+                <table id="shipmentsTable">
+                    <thead>
+                        <tr>
+                            <th>Tracking Code</th>
+                            <th>Status</th>
+                            <th>Origin</th>
+                            <th>Destination</th>
+                            <th>Products</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody id="shipmentsBody">
+                        <tr><td colspan="6" style="text-align: center;">Click "Refresh List" to load shipments</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Create Tab -->
+            <div id="createTab" class="tab-content">
+                <h2>Create New Shipment</h2>
+                <form id="createForm">
+                    <h3>Sender Information</h3>
+                    <div class="form-group">
+                        <label>Sender Name</label>
+                        <input type="text" id="senderName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Sender Phone</label>
+                        <input type="text" id="senderPhone" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Sender Email</label>
+                        <input type="email" id="senderEmail" required>
+                    </div>
+
+                    <h3>Receiver Information</h3>
+                    <div class="form-group">
+                        <label>Receiver Name</label>
+                        <input type="text" id="receiverName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Receiver Phone</label>
+                        <input type="text" id="receiverPhone" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Receiver Email</label>
+                        <input type="email" id="receiverEmail" required>
+                    </div>
+
+                    <h3>Shipment Details</h3>
+                    <div class="form-group">
+                        <label>Origin</label>
+                        <input type="text" id="origin" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Destination</label>
+                        <input type="text" id="destination" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Expected Delivery</label>
+                        <input type="date" id="expectedDelivery" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="status">
+                            <option value="pending">Pending</option>
+                            <option value="in transit">In Transit</option>
+                            <option value="delivered">Delivered</option>
+                        </select>
+                    </div>
+
+                    <h3>Products</h3>
+                    <div id="productsContainer">
+                        <div class="product-row">
+                            <input type="text" placeholder="Product Name" class="product-name" required>
+                            <input type="number" placeholder="Qty" class="product-qty" required>
+                            <input type="text" placeholder="Weight" class="product-weight" required>
+                            <input type="file" accept="image/*" class="product-image">
+                        </div>
+                    </div>
+                    <button type="button" class="add-product-btn" onclick="addProductRow()">+ Add Product</button>
+
+                    <button type="submit" style="margin-top: 20px;">Create Shipment</button>
+                    <div id="createMessage" class="success"></div>
+                </form>
+            </div>
+
+            <!-- Update Tab -->
+            <div id="updateTab" class="tab-content">
+                <h2>Update Shipment Status</h2>
+                <form id="updateForm">
+                    <div class="form-group">
+                        <label>Tracking Code</label>
+                        <input type="text" id="updateTcode" required placeholder="TRK-000001">
+                    </div>
+                    <div class="form-group">
+                        <label>New Status</label>
+                        <select id="updateStatus">
+                            <option value="pending">Pending</option>
+                            <option value="in transit">In Transit</option>
+                            <option value="out for delivery">Out for Delivery</option>
+                            <option value="delivered">Delivered</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Note (Optional)</label>
+                        <textarea id="updateNote" rows="3" placeholder="e.g., Departed facility, Arrived at destination"></textarea>
+                    </div>
+                    <button type="submit">Update Status</button>
+                    <div id="updateMessage" class="success"></div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Helper to safely parse JSON responses
+        async function parseJsonResponse(response) {
+            const text = await response.text();
+            if (!text || text.trim() === '') {
+                return { ok: response.ok, status: response.status, error: '(empty response from server)' };
+            }
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                return { ok: false, status: response.status, error: 'Invalid JSON: ' + text.substring(0, 100) };
+            }
+        }
+
+        // Login
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('loginError');
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password }),
+                    credentials: 'same-origin'
+                });
+
+                const data = await parseJsonResponse(response);
+                console.log('Login response:', data);
+
+                if (data.ok) {
+                    document.getElementById('loginSection').style.display = 'none';
+                    document.getElementById('dashboardSection').classList.add('active');
+                    loadShipments();
+                } else {
+                    errorDiv.textContent = 'Login failed: ' + (data.error || 'Unknown error');
+                    errorDiv.style.color = '#e74c3c';
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                errorDiv.textContent = 'Connection error: ' + error.message;
+                errorDiv.style.color = '#e74c3c';
+            }
+        });
+
+        // Logout
+        function logout() {
+            fetch('/api/logout', { method: 'POST' })
+                .then(() => {
+                    document.getElementById('loginSection').style.display = 'block';
+                    document.getElementById('dashboardSection').classList.remove('active');
+                    document.getElementById('username').value = '';
+                    document.getElementById('password').value = '';
+                });
+        }
+
+        // Switch tabs
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.add('active');
+        }
+
+        // Load shipments
+        async function loadShipments() {
+            try {
+                const response = await fetch('/api/list_tracking', { credentials: 'same-origin' });
+                const data = await parseJsonResponse(response);
+
+                if (data.ok) {
+                    const tbody = document.getElementById('shipmentsBody');
+                    if (data.list.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No shipments found</td></tr>';
+                    } else {
+                        tbody.innerHTML = data.list.map(item => `
+                            <tr>
+                                <td><strong>${item.tcode}</strong></td>
+                                <td><span class="status-badge status-${item.status.replace(' ', '-')}">${item.status}</span></td>
+                                <td>${item.origin}</td>
+                                <td>${item.destination}</td>
+                                <td>${item.products_count} items</td>
+                                <td>${item.created_at}</td>
+                            </tr>
+                        `).join('');
+                    }
+                } else {
+                    alert('Error loading shipments: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Error loading shipments: ' + error.message);
+            }
+        }
+
+        // Add product row
+        function addProductRow() {
+            const container = document.getElementById('productsContainer');
+            const row = document.createElement('div');
+            row.className = 'product-row';
+            row.innerHTML = `
+                <input type="text" placeholder="Product Name" class="product-name" required>
+                <input type="number" placeholder="Qty" class="product-qty" required>
+                <input type="text" placeholder="Weight" class="product-weight" required>
+                <input type="file" accept="image/*" class="product-image">
+                <button type="button" class="remove-product-btn" onclick="this.parentElement.remove()">Remove</button>
+            `;
+            container.appendChild(row);
+        }
+
+        // Create shipment
+        document.getElementById('createForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const messageDiv = document.getElementById('createMessage');
+
+            // Collect products and files, send as FormData to allow image upload
+            const products = [];
+            document.querySelectorAll('.product-row').forEach(row => {
+                products.push({
+                    name: row.querySelector('.product-name').value,
+                    qty: row.querySelector('.product-qty').value,
+                    weight: row.querySelector('.product-weight').value
+                });
+            });
+
+            const formData = new FormData();
+            formData.append('sender', JSON.stringify({
+                name: document.getElementById('senderName').value,
+                phone: document.getElementById('senderPhone').value,
+                email: document.getElementById('senderEmail').value
+            }));
+            formData.append('receiver', JSON.stringify({
+                name: document.getElementById('receiverName').value,
+                phone: document.getElementById('receiverPhone').value,
+                email: document.getElementById('receiverEmail').value
+            }));
+            formData.append('origin', document.getElementById('origin').value);
+            formData.append('destination', document.getElementById('destination').value);
+            formData.append('expectedDelivery', document.getElementById('expectedDelivery').value);
+            formData.append('status', document.getElementById('status').value);
+            formData.append('products', JSON.stringify(products));
+
+            // Append product images in the same order
+            document.querySelectorAll('.product-image').forEach(input => {
+                if (input.files && input.files[0]) {
+                    formData.append('productImages', input.files[0]);
+                } else {
+                    // still append empty placeholder so server-file index matches products order
+                    formData.append('productImages', new Blob(), '');
+                }
+            });
+
+            try {
+                const response = await fetch('/api/create_tracking', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin'
+                });
+
+                const result = await parseJsonResponse(response);
+                console.log('Create response:', result, 'Status:', response.status);
+
+                if (result.ok) {
+                    messageDiv.textContent = `✓ Shipment created! Tracking code: ${result.tcode}`;
+                    messageDiv.style.color = '#27ae60';
+                    document.getElementById('createForm').reset();
+                    setTimeout(() => messageDiv.textContent = '', 5000);
+                    loadShipments();
+                } else {
+                    messageDiv.textContent = '✗ Error: ' + (result.error || 'Unknown error');
+                    messageDiv.style.color = '#e74c3c';
+                }
+            } catch (error) {
+                messageDiv.textContent = '✗ Connection error: ' + error.message;
+                messageDiv.style.color = '#e74c3c';
+            }
+        });
+
+        // Update status
+        document.getElementById('updateForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const messageDiv = document.getElementById('updateMessage');
+
+            const data = {
+                tcode: document.getElementById('updateTcode').value,
+                status: document.getElementById('updateStatus').value,
+                note: document.getElementById('updateNote').value
+            };
+
+            try {
+                const response = await fetch('/api/update_status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                    credentials: 'same-origin'
+                });
+
+                const result = await parseJsonResponse(response);
+
+                if (result.ok) {
+                    messageDiv.textContent = `✓ Status updated for ${data.tcode}`;
+                    messageDiv.style.color = '#27ae60';
+                    document.getElementById('updateForm').reset();
+                    setTimeout(() => messageDiv.textContent = '', 5000);
+                    loadShipments();
+                } else {
+                    messageDiv.textContent = '✗ Error: ' + (result.error || 'Unknown error');
+                    messageDiv.style.color = '#e74c3c';
+                }
+            } catch (error) {
+                messageDiv.textContent = '✗ Connection error: ' + error.message;
+                messageDiv.style.color = '#e74c3c';
+            }
+        });
+    </script>
+</body>
+</html>
