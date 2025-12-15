@@ -5,7 +5,7 @@
 <head>
     <!-- Basic Page Needs -->
     <meta charset="utf-8">
-    <title>Firstreedexpress Express Delivery Services | Track Shipment</title>
+    <title>Firstreed Express Delivery Services | Track Shipment</title>
 
     <!-- Mobile Specific Metas -->
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
@@ -47,7 +47,7 @@
                             <div class="flat-wrapper">
                                 <div style='width: auto; height: 60px; float: left; margin: 15px 0; padding-right: 20px;'>
                                     <a href="./">
-                                        <img src="images/logo.png" alt="Firstreedexpress Logo" style="height: 60px; width: auto; max-width: 250px;">
+                                        <img src="images/logo2a.png" alt="Firstreed Logo" style="width: 250px; height: 70px; float: left; margin: 20px 0;">
                                     </a>
                                 </div><!-- /.logo -->
                                 <div class="btn-menu">
@@ -465,8 +465,265 @@ async function displayTrackingResults(tcode) {
     }
 }
 
-function downloadLabel(tcode) {
-    window.open('/api/generate-label/' + tcode, '_blank');
+// Replaced the original simple open-with-server logic with a client-side PDF generator.
+// If anything fails, it will fall back to the server endpoint /api/generate-label/<tcode>
+async function downloadLabel(tcode) {
+    if (!tcode) {
+        alert('No tracking code provided');
+        return;
+    }
+
+    try {
+        // Fetch the latest tracking data
+        const resp = await fetch('/api/track?tcode=' + encodeURIComponent(tcode));
+        if (!resp.ok) {
+            // Fallback to server PDF if API not available
+            window.open('/api/generate-label/' + encodeURIComponent(tcode), '_blank');
+            return;
+        }
+        const data = await resp.json();
+
+        // Build printable element
+        const printable = document.createElement('div');
+        printable.style.width = '1000px';
+        printable.style.maxWidth = '100%';
+        printable.style.background = '#fff';
+        printable.style.padding = '16px';
+        printable.style.boxSizing = 'border-box';
+        printable.style.fontFamily = 'Arial, Helvetica, sans-serif';
+        printable.style.color = '#111';
+        printable.id = 'firstreed-printable';
+
+        // Header
+        const header = document.createElement('div');
+        header.style.display = 'flex';
+        header.style.justifyContent = 'space-between';
+        header.style.alignItems = 'flex-start';
+        header.style.borderBottom = '6px solid #f5f5f5';
+        header.style.paddingBottom = '8px';
+        header.style.marginBottom = '12px';
+
+        const left = document.createElement('div');
+        left.style.display = 'flex';
+        left.style.alignItems = 'center';
+        left.style.gap = '10px';
+
+        const logo = document.createElement('img');
+        logo.src = 'images/logo.png';
+        logo.style.height = '60px';
+        logo.style.width = 'auto';
+        logo.style.objectFit = 'contain';
+        logo.alt = 'Company logo';
+
+        const comp = document.createElement('div');
+        const compName = document.createElement('div');
+        compName.textContent = 'FASTREED';
+        compName.style.fontSize = '26px';
+        compName.style.fontWeight = '700';
+        compName.style.color = '#0b57a4';
+        const compSub = document.createElement('div');
+        compSub.textContent = 'Express Delivery Services';
+        compSub.style.fontSize = '12px';
+        compSub.style.color = '#666';
+
+        comp.appendChild(compName);
+        comp.appendChild(compSub);
+        left.appendChild(logo);
+        left.appendChild(comp);
+
+        header.appendChild(left);
+
+        const right = document.createElement('div');
+        right.style.textAlign = 'left';
+        right.style.minWidth = '220px';
+        right.innerHTML = `<div style="font-size:11px;color:#666">DOCUMENT: SHIPPING LABEL</div>
+                           <div style="font-weight:700;margin-top:8px">${data.tcode || tcode}</div>
+                           <div style="font-size:11px;color:#666;margin-top:6px">${data.created_at || ''}</div>`;
+        header.appendChild(right);
+
+        printable.appendChild(header);
+
+        // Main content
+        const main = document.createElement('div');
+        main.style.display = 'flex';
+        main.style.gap = '12px';
+
+        const leftCol = document.createElement('div');
+        leftCol.style.flex = '1';
+
+        // Sender / Receiver details table
+        const table = document.createElement('table');
+        table.style.width = '100%';
+        table.style.borderCollapse = 'collapse';
+        const tbody = document.createElement('tbody');
+
+        function addRow(label, val) {
+            const tr = document.createElement('tr');
+            const td1 = document.createElement('td');
+            td1.style.width = '150px';
+            td1.style.fontWeight = '700';
+            td1.style.verticalAlign = 'top';
+            td1.textContent = label;
+            const td2 = document.createElement('td');
+            td2.textContent = val || '';
+            tr.appendChild(td1);
+            tr.appendChild(td2);
+            tbody.appendChild(tr);
+        }
+
+        addRow("Sender's Name", (data.sender && data.sender.name) || '');
+        addRow("Sender's Phone", (data.sender && data.sender.phone) || '');
+        addRow("Sender's Email", (data.sender && data.sender.email) || '');
+        addRow("Sender's Address", (data.sender && data.sender.address) || data.origin || '');
+        addRow("Receiver's Name", (data.receiver && data.receiver.name) || '');
+        addRow("Receiver's Phone", (data.receiver && data.receiver.phone) || '');
+        addRow("Receiver's Address", (data.receiver && data.receiver.address) || data.destination || '');
+
+        table.appendChild(tbody);
+        leftCol.appendChild(table);
+
+        const rightCol = document.createElement('div');
+        rightCol.style.width = '320px';
+
+        // Tracking block
+        const trackingBlock = document.createElement('div');
+        trackingBlock.style.background = '#fff6ea';
+        trackingBlock.style.border = '2px solid #ff8c00';
+        trackingBlock.style.padding = '12px';
+        trackingBlock.style.textAlign = 'center';
+        trackingBlock.style.width = '100%';
+        trackingBlock.style.boxSizing = 'border-box';
+        trackingBlock.style.marginBottom = '10px';
+
+        const tlabel = document.createElement('div');
+        tlabel.style.fontSize = '11px';
+        tlabel.style.color = '#666';
+        tlabel.textContent = 'TRACKING CODE';
+        trackingBlock.appendChild(tlabel);
+
+        const tnum = document.createElement('div');
+        tnum.style.fontSize = '26px';
+        tnum.style.color = '#d84315';
+        tnum.style.fontWeight = '700';
+        tnum.style.marginTop = '6px';
+        tnum.textContent = data.tcode || tcode;
+        trackingBlock.appendChild(tnum);
+
+        const contact = document.createElement('div');
+        contact.style.fontSize = '12px';
+        contact.style.marginTop = '6px';
+        contact.textContent = (data.sender && data.sender.phone) ? data.sender.phone : (data.contact || '');
+        trackingBlock.appendChild(contact);
+
+        const addr = document.createElement('div');
+        addr.style.fontSize = '11px';
+        addr.style.color = '#666';
+        addr.textContent = data.origin ? (data.origin + ' → ' + (data.destination || '')) : (data.destination || '');
+        trackingBlock.appendChild(addr);
+
+        rightCol.appendChild(trackingBlock);
+
+        // Item / Amount / Weight
+        const infoBox = document.createElement('div');
+        infoBox.style.border = '1px solid #e8e8e8';
+        infoBox.style.padding = '8px';
+        infoBox.style.fontSize = '12px';
+        infoBox.innerHTML = `<div><strong>Item:</strong> ${(data.products && data.products[0] && data.products[0].name) || ''}</div>
+                             <div><strong>Amount:</strong> ${data.amount || ''}</div>
+                             <div><strong>Weight:</strong> ${(data.products && data.products[0] && data.products[0].weight) || data.weight || ''}</div>`;
+        rightCol.appendChild(infoBox);
+
+        // Stamp
+        const stampWrap = document.createElement('div');
+        stampWrap.style.display = 'flex';
+        stampWrap.style.justifyContent = 'flex-end';
+        stampWrap.style.marginTop = '12px';
+        const stamp = document.createElement('div');
+        stamp.style.display = 'flex';
+        stamp.style.alignItems = 'center';
+        stamp.style.justifyContent = 'center';
+        stamp.style.width = '120px';
+        stamp.style.height = '120px';
+        stamp.style.borderRadius = '50%';
+        stamp.style.border = '3px solid #2b7bbd';
+        stamp.style.color = '#2b7bbd';
+        stamp.style.fontWeight = '700';
+        stamp.style.textAlign = 'center';
+        stamp.style.fontSize = '12px';
+        stamp.innerHTML = 'OFFICE STAMP<br>APPROVED';
+        stampWrap.appendChild(stamp);
+        rightCol.appendChild(stampWrap);
+
+        main.appendChild(leftCol);
+        main.appendChild(rightCol);
+
+        printable.appendChild(main);
+
+        // Barcode image
+        const barWrap = document.createElement('div');
+        barWrap.style.textAlign = 'center';
+        barWrap.style.marginTop = '18px';
+        const barcodeImg = document.createElement('img');
+        barcodeImg.src = data.barcode || 'images/barcode.png';
+        barcodeImg.style.maxWidth = '260px';
+        barcodeImg.alt = 'barcode';
+        barWrap.appendChild(barcodeImg);
+        printable.appendChild(barWrap);
+
+        // Append offscreen for rendering
+        printable.style.position = 'fixed';
+        printable.style.left = '-9999px';
+        printable.style.top = '0';
+        document.body.appendChild(printable);
+
+        // Wait for images to load
+        const images = printable.querySelectorAll('img');
+        await Promise.all(Array.from(images).map(img => {
+            if (img.complete) return Promise.resolve();
+            return new Promise((res) => { img.onload = img.onerror = res; });
+        }));
+
+        // Use html2canvas to capture. If html2canvas/jsPDF not yet loaded, load will be handled below and function retried
+        if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') {
+            // remove node and open fallback
+            document.body.removeChild(printable);
+            // Fallback to server endpoint if libraries are unavailable
+            window.open('/api/generate-label/' + encodeURIComponent(tcode), '_blank');
+            return;
+        }
+
+        const scale = 2;
+        const canvas = await html2canvas(printable, {
+            scale: scale,
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            windowWidth: printable.scrollWidth,
+            windowHeight: printable.scrollHeight
+        });
+
+        // Clean up node
+        document.body.removeChild(printable);
+
+        const imgData = canvas.toDataURL('image/png');
+        const pdfWidth = canvas.width;
+        const pdfHeight = canvas.height;
+
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'px',
+            format: [pdfWidth, pdfHeight]
+        });
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+
+        const filename = (data.tcode || tcode).replace(/\s+/g, '_') + '.pdf';
+        pdf.save(filename);
+
+    } catch (err) {
+        console.error('PDF generation error', err);
+        // final fallback
+        window.open('/api/generate-label/' + encodeURIComponent(tcode), '_blank');
+    }
 }
 
 // Auto-load if tcode in URL
@@ -594,7 +851,7 @@ if (tcode) {
                         <div class="col-md-4">
                             <div class="widge widget_text">
                                 <div class="textwidget">
-                                    <h2>Firstreedexpress Express Delivery Services - Providing Smart Logistics Solution Across
+                                    <h2>Firstreed Express Delivery Services - Providing Smart Logistics Solution Across
                                         The World.</h2>
                                 </div>
                             </div><!-- /.widget_text -->
@@ -625,7 +882,7 @@ if (tcode) {
                             <div class="widget widget_text information">
                                 <h3 class="widget-title">Contact Us</h3>
                                 <div class="textwidget">
-                                    <p><strong>Firstreedexpress Express Delivery Services</strong><br></p>
+                                    <p><strong>Firstreed Express Delivery Services</strong><br></p>
                                     <p>
                                         <i class="fa fa-envelope"></i><a href="/cdn-cgi/l/email-protection"
                                             class="__cf_email__"
@@ -656,7 +913,7 @@ if (tcode) {
                                 </div>
                                 <div class="copyright">
                                     <div class="copyright-content">
-                                        Copyright &copy; 2025 Firstreedexpress Express Delivery Services. | All Rights
+                                        Copyright &copy; 2025 Firstreed Express Delivery Services. | All Rights
                                         Reserved.
                                     </div>
                                 </div>
@@ -720,6 +977,20 @@ if (tcode) {
     <script src="vendors/jquery-jvectormap/jquery-jvectormap-2.0.3.min.js"></script>
     <script src="vendors/jquery-jvectormap/jvectormap-worldmill.js"></script>
     <script src="vendors/jquery-jvectormap/locations.js"></script>
+
+    <!-- Added libraries for client-side PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
+        integrity="sha512-BNa5mExHn8aC3f1pJ6Y9uQvGvH6D1Y1wIt7b0G6f5r3uWnqXc2gNQmA0p6b0P8qg0h7gq8zK6l2r8Y1E2g6e3g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+        integrity="sha512-+mKjH5kltq2xg8wq4fK6mR7kLp1d4c3o6d9P3d1w2k3lE0k3Z9g4Gh6j9c7s1w4tZ1Y1n7x2z3w4k5u6v7w=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <!-- Track.js already exists; keep it. The new downloadLabel override above will be used by the HTML generated later -->
+    <script type="text/javascript" src="javascript/jquery.themepunch.tools.min.js"></script>
+    <script type="text/javascript" src="javascript/jquery.themepunch.revolution.min.js"></script>
+    <script type="text/javascript" src="javascript/slider.js"></script>
+
     <style>
         body {
             top: 0px !important;
